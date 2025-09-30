@@ -1,0 +1,74 @@
+<!-- @p VanillaJS 
+ -->
+<!DOCTYPE html>
+<html lang="pl">
+	<!--====================-->
+	<!--#region @r HEAD -->
+	<!--====================-->
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<!-- Font Avesome -->
+		<link rel="stylesheet" href="vendor/fontawesome.css" />
+		<!-- Styles -->
+		<link rel="stylesheet" href="styles.css" />
+		<!-- Title -->
+		<title>VanillaJS</title>
+	</head>
+	<!--#endregion -->
+	<!--====================-->
+	<!--#region @r BODY -->
+	<!--====================-->
+	<body>
+		<!------------------------
+		 @g HEADER
+		------------------------->
+		<header>VanillaJS</header>
+		<!------------------------
+		 @g MAIN
+		------------------------->
+		<main>
+			<button class="main__button">Change color</button>
+		</main>
+		<!------------------------
+		 @g FOOTER
+		------------------------->
+		<footer>2025 © Przemysław Fikas</footer>
+		<!------------------------
+		 @g MODALS
+		------------------------->
+		<div class="modal">
+			<div class="modal__container">
+				<button class="modal__close" aria-label="Close">&times;</button>
+				<div class="modal__content">
+					<!-- Modal content -->
+				</div>
+			</div>
+		</div>
+		<!-- @b Modal alert
+		------------------------->
+		<template id="modal-alert">
+			<h2 class="modal__title"></h2>
+			<p class="modal__text"></p>
+			<div class="modal__buttons">
+				<button class="modal__button">OK</button>
+			</div>
+		</template>
+		<!-- @b Modal confirm
+		------------------------->
+		<template id="modal-confirm">
+			<h2 class="modal__title"></h2>
+			<p class="modal__text"></p>
+			<div class="modal__buttons">
+				<button class="modal__button modal__button--cancel">Cancel</button>
+				<button class="modal__button modal__button--confirm">Confirm</button>
+			</div>
+		</template>
+		<!--#endregion -->
+		<!--====================-->
+		<!--#region @r SCRIPT -->
+		<!--====================-->
+		<script src="script.js"></script>
+	</body>
+	<!--#endregion -->
+</html>
