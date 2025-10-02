@@ -5,90 +5,148 @@
 // @g Logger
 //------------------------
 /**
- * @typedef {Object} Logger
- * @property {boolean} active - Flag to activate/deactivate the logger
- * @property {Object.<string, string>} styles - Mapping of log modes to CSS styles
- * @property {function(string, ...any):void} styled - Styled log with function name
- * @property {function(...any):void} default - Plain log without colors
- * @property {function(...any):void} gray - Shortcut for gray logs
- * @property {function(...any):void} orange - Shortcut for orange logs
- * @property {function(...any):void} blue - Shortcut for blue logs
- * @property {function(...any):void} red - Shortcut for red logs
- * @property {function(...any):void} white - Shortcut for white logs
- * @property {function(...any):void} yellow - Shortcut for yellow logs
- * @property {function():void} init - Initializes shortcut methods
- */
-/** @type {Logger} */
+ * @typedef {Object} Log
+ * @property {function(string):void} divider
+ * @property {function(string):void} start
+ * @property {function():void} end
+ * @property {function():void} init
+ * @property {function(...any):void} warn
+ * @property {function(...any):void} error
+ * @property {function(...any):void} default
+ * @property {function(...any):void} blue
+ * @property {function(...any):void} gray
+ * @property {function(...any):void} orange
+ * @property {function(...any):void} red
+ * @property {function(...any):void} white
+ * @property {function(...any):void} yellow
+ */ /** @type {Log} */
 const Log = {
-	active: true,
-	styles: {
-		blue: { style: 'color: steelblue;', active: true },
-		gray: { style: 'color: gray;', active: true },
-		orange: { style: 'color: orange;', active: true },
-		red: { style: 'color: red;', active: true },
-		white: { style: 'color: white;', active: true },
-		yellow: { style: 'color: yellow;', active: true },
+	// Config
+	_config: {
+		active: true,
+		caller: { active: true, style: 'font-size: 1.05em; font-weight: bold;', showClass: false },
+		location: { active: true, style: 'font-size: 0.85em; font-style: italic; color: dimgray;' },
+		divider: { active: true, style: 'font-size: 1.05em; font-weight: bold;', char: '-', length: 12 },
+		group: { active: true, style: 'font-size: 1.1em; font-weight: bold;', collapsed: false },
 	},
-	// @b Styled log
-	//------------------------
-	styled(mode, ...args) {
-		if (!this.active) return
-		const styleObj = this.styles[mode]
-		if (!styleObj || !styleObj.active) return
-		const stack = new Error().stack
-		const caller =
-			stack
-				?.split('\n')[3]
-				?.trim()
-				.split(' ')[1]
-				?.replace(/^(HTML\w+|Object)/, '')
-				?.replace(/[^a-zA-Z0-9_$]/g, '') || 'anonymous'
-		const content = args
+	_styles: {
+		blue: { active: true, style: 'color: steelblue;' },
+		gray: { active: true, style: 'color: gray;' },
+		orange: { active: true, style: 'color: orange;' },
+		red: { active: true, style: 'color: red;' },
+		white: { active: true, style: 'color: white;' },
+		yellow: { active: true, style: 'color: yellow;' },
+	},
+	
+	// Helpers
+	_getCallerInfo: (idx) => {
+		const line = new Error().stack?.split('\n')[idx]?.trim() || ''
+		const match = line.match(/at\s+(.+?)\s+\((.+)\)/) || line.match(/^(.+?)@(.+)/)
+		if (!match) return { caller: '', className: '', location: '' }
+
+		const fullName = match[1]
+		const parts = fullName.split('.')
+		const caller = parts.pop()
+		const className = parts.length > 0 ? parts.join('.') : ''
+		const fullPath = match[2] || match[1]
+		const loc = fullPath.match(/([^\/\\]+):(\d+):\d+/)
+		const location = loc ? `${loc[1]}:${loc[2]}` : ''
+		return { caller, className, location }
+	},
+	_formatArgs: (args) =>
+		args
 			.map((a) =>
 				a instanceof HTMLElement ? `[${a.tagName}]` : typeof a === 'object' ? JSON.stringify(a, null, 2) : a
 			)
-			.join(', ')
-		console.log(`%c${caller}%c(${content})`, `${styleObj.style}font-weight: bold;`, styleObj.style)
+			.join(', '),
+
+	// Styled
+	styled(mode, ...args) {
+		if (!this._config.active || !this._styles[mode]?.active) return
+		const { caller, className, location } = this._getCallerInfo(4)
+		const content = this._formatArgs(args)
+		const style = this._styles[mode].style
+
+		let message = ''
+		let styles = []
+
+		if (this._config.caller.active) {
+			const fullCaller = className && this._config.caller.showClass ? `${className}.${caller}` : caller
+			message += `%c${fullCaller}%c(${content})`
+			styles.push(`${style}${this._config.caller.style}`, style)
+		} else {
+			message += `%c(${content})`
+			styles.push(style)
+		}
+		if (this._config.location.active) {
+			message += `\n%c${location}`
+			styles.push(this._config.location.style)
+		}
+		console.log(message, ...styles)
 	},
-	// @b Default log
-	//------------------------
+
+	// Default
 	default(...args) {
-		if (!this.active) return
+		if (!this._config.active) return
 		console.log(...args)
+		if (this._config.location.active) {
+			const { location } = this._getCallerInfo(3)
+			console.log(`%c${location}`, this._config.location.style)
+		}
 	},
-	// @b Initialize
-	//------------------------
+
+	// Error
+	error(...args) {
+		if (!this._config.active) return
+		console.error(...args)
+		if (this._config.location.active) {
+			const { location } = this._getCallerInfo(3)
+			console.log(`%c${location}`, this._config.location.style)
+		}
+	},
+
+	// Warn
+	warn(...args) {
+		if (!this._config.active) return
+		console.warn(...args)
+		if (this._config.location.active) {
+			const { location } = this._getCallerInfo(3)
+			console.log(`%c${location}`, this._config.location.style)
+		}
+	},
+
+	// Divider
+	divider(text = '') {
+		if (!this._config.active || !this._config.divider.active) return
+
+		const char = this._config.divider.char
+		const style = this._config.divider.style
+
+		if (text) {
+			console.log(`%c${text}\n${char.repeat(text.length)}`, style)
+		} else {
+			console.log(`%c${char.repeat(this._config.divider.length)}`, style)
+		}
+	},
+
+	// Start
+	start(text = 'Logs') {
+		if (!this._config.active || !this._config.group.active) return
+		const method = this._config.group.collapsed ? console.groupCollapsed : console.group
+		method(`%c${text}`, this._config.group.style)
+	},
+
+	// End
+	end() {
+		if (!this._config.active || !this._config.group.active) return
+		console.groupEnd()
+	},
+
+	// Init
 	init() {
-		Object.keys(this.styles).forEach((mode) => {
+		Object.keys(this._styles).forEach((mode) => {
 			this[mode] = (...args) => this.styled(mode, ...args)
 		})
-	},
-}
-
-// @g Storage
-//------------------------
-const Storage = {
-	// @b Get from
-	//------------------------
-	get: (key, defaultValue = null) => {
-		try {
-			const item = localStorage.getItem(key)
-			return item ? JSON.parse(item) : defaultValue
-		} catch (e) {
-			Log.red('Storage read error:', e)
-			return defaultValue
-		}
-	},
-	// @b Set to
-	//------------------------
-	set: (key, value) => {
-		try {
-			localStorage.setItem(key, JSON.stringify(value))
-			return true
-		} catch (e) {
-			Log.red('Storage write error:', e)
-			return false
-		}
 	},
 }
 
@@ -253,7 +311,7 @@ const DOM = {
 			return null
 		}
 		return template.content.cloneNode(true)
-	},	
+	},
 	scrollTo: (element, options) => element?.scrollTo(options),
 	lockScroll: () => (document.body.style.overflow = 'hidden'),
 	unlockScroll: () => (document.body.style.overflow = ''),
