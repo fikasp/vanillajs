@@ -4,32 +4,18 @@
 //========================
 // @g Logger
 //------------------------
-/**
- * @typedef {Object} Log
- * @property {function(string):void} divider
- * @property {function(string):void} start
- * @property {function():void} end
- * @property {function():void} init
- * @property {function(...any):void} warn
- * @property {function(...any):void} error
- * @property {function(...any):void} default
- * @property {function(...any):void} blue
- * @property {function(...any):void} gray
- * @property {function(...any):void} orange
- * @property {function(...any):void} red
- * @property {function(...any):void} white
- * @property {function(...any):void} yellow
- */ /** @type {Log} */
 const Log = {
-	// Config
-	_config: {
+	// @b Config
+	//------------------------
+	config: {
 		active: true,
-		caller: { active: true, style: 'font-size: 1.05em; font-weight: bold;', showClass: false },
-		location: { active: true, style: 'font-size: 0.85em; font-style: italic; color: dimgray;' },
-		divider: { active: true, style: 'font-size: 1.05em; font-weight: bold;', char: '-', length: 12 },
-		group: { active: true, style: 'font-size: 1.1em; font-weight: bold;', collapsed: false },
+		maxDepth: Infinity,
+		location: { active: true, style: 'font-size: 0.9em; font-style: italic; color: dimgray;' },
+		divider: { active: false, style: 'font-size: 1.1em; font-weight: bold;', char: '-', length: 12 },
+		group: { active: true, style: 'font-size: 1.2em; font-weight: bold;', collapsed: false },
+		depth: { active: true, char: ' ' },
 	},
-	_styles: {
+	styles: {
 		blue: { active: true, style: 'color: steelblue;' },
 		gray: { active: true, style: 'color: gray;' },
 		orange: { active: true, style: 'color: orange;' },
@@ -37,22 +23,39 @@ const Log = {
 		white: { active: true, style: 'color: white;' },
 		yellow: { active: true, style: 'color: yellow;' },
 	},
-	
-	// Helpers
+
+	// @b Private
+	//------------------------
+
+	// Depth
+	_depth: 0,
+
+	// Should log
+	_shouldLog() {
+		return this.config.active && this._depth <= this.config.maxDepth
+	},
+
+	// Get indent
+	_getIndent() {
+		return this.config.depth.active ? this.config.depth.char.repeat(this._depth) : ''
+	},
+
+	// Get caller info
 	_getCallerInfo: (idx) => {
 		const line = new Error().stack?.split('\n')[idx]?.trim() || ''
 		const match = line.match(/at\s+(.+?)\s+\((.+)\)/) || line.match(/^(.+?)@(.+)/)
-		if (!match) return { caller: '', className: '', location: '' }
+		if (!match) return { caller: '', location: '' }
 
 		const fullName = match[1]
 		const parts = fullName.split('.')
 		const caller = parts.pop()
-		const className = parts.length > 0 ? parts.join('.') : ''
 		const fullPath = match[2] || match[1]
 		const loc = fullPath.match(/([^\/\\]+):(\d+):\d+/)
 		const location = loc ? `${loc[1]}:${loc[2]}` : ''
-		return { caller, className, location }
+		return { caller, location }
 	},
+
+	// Format args
 	_formatArgs: (args) =>
 		args
 			.map((a) =>
@@ -60,93 +63,171 @@ const Log = {
 			)
 			.join(', '),
 
-	// Styled
-	styled(mode, ...args) {
-		if (!this._config.active || !this._styles[mode]?.active) return
-		const { caller, className, location } = this._getCallerInfo(4)
-		const content = this._formatArgs(args)
-		const style = this._styles[mode].style
+	// Enter with style
+	_enterWithStyle(color, ...data) {
+		if (!this.config.active || !this.styles[color]?.active) return
 
-		let message = ''
-		let styles = []
+		const indent = this._getIndent()
+		const { caller, location } = this._getCallerInfo(4)
 
-		if (this._config.caller.active) {
-			const fullCaller = className && this._config.caller.showClass ? `${className}.${caller}` : caller
-			message += `%c${fullCaller}%c(${content})`
-			styles.push(`${style}${this._config.caller.style}`, style)
-		} else {
-			message += `%c(${content})`
-			styles.push(style)
+		if (this._depth <= this.config.maxDepth) {
+			const formatted = data.length > 0 ? this._formatArgs(data) : ''
+			const message = `${indent}→ ${caller}(${formatted})`
+			console.log(`%c${message}`, this.styles[color].style)
+
+			if (this.config.location.active) {
+				console.log(`${indent}%c→ ${location}`, this.config.location.style)
+			}
 		}
-		if (this._config.location.active) {
-			message += `\n%c${location}`
-			styles.push(this._config.location.style)
+		this._depth++
+	},
+
+	// Start with style
+	_startWithStyle(color, text = null) {
+		if (!this._shouldLog() || !this.config.group.active || !this.styles[color]?.active) return
+
+		const indent = this._getIndent()
+		const displayText = text !== null ? text : this._getCallerInfo(5).caller
+		const method = this.config.group.collapsed ? console.groupCollapsed : console.group
+
+		const combinedStyle = `${this.config.group.style} ${this.styles[color].style}`
+		method(`${indent}%c${displayText}`, combinedStyle)
+	},
+
+	// Styled
+	_styled(mode, ...args) {
+		if (!this._shouldLog() || !this.styles[mode]?.active) return
+		const { location } = this._getCallerInfo(4)
+		const content = this._formatArgs(args)
+		const style = this.styles[mode].style
+		const indent = this._getIndent()
+
+		let message = `${indent}%c${content}`
+		let styles = [style]
+
+		if (this.config.location.active) {
+			message += `\n${indent}%c→ ${location}`
+			styles.push(this.config.location.style)
 		}
 		console.log(message, ...styles)
 	},
 
+	// @b Public
+	//------------------------
+
+	// Enter
+	enter(...data) {
+		if (!this.config.active) return
+
+		const indent = this._getIndent()
+		const { caller, location } = this._getCallerInfo(3)
+
+		if (this._depth <= this.config.maxDepth) {
+			const formatted = data.length > 0 ? this._formatArgs(data) : ''
+			console.log(`${indent}→ ${caller}(${formatted})`)
+
+			if (this.config.location.active) {
+				console.log(`${indent}%c→ ${location}`, this.config.location.style)
+			}
+		}
+		this._depth++
+	},
+
+	// Exit
+	exit() {
+		if (!this.config.active) return
+		this._depth = Math.max(0, this._depth - 1)
+	},
+
+	// Start
+	start(text = null) {
+		if (!this._shouldLog() || !this.config.group.active) return
+
+		const indent = this._getIndent()
+		const displayText = text !== null ? text : this._getCallerInfo(3).caller
+		const method = this.config.group.collapsed ? console.groupCollapsed : console.group
+
+		method(`${indent}%c${displayText}`, `${this.config.group.style} color: yellow;`)
+	},
+
+	// End
+	end() {
+		if (!this.config.active || !this.config.group.active) return
+		console.groupEnd()
+	},
+
 	// Default
 	default(...args) {
-		if (!this._config.active) return
-		console.log(...args)
-		if (this._config.location.active) {
+		if (!this._shouldLog()) return
+		const indent = this._getIndent()
+		console.log(indent, ...args)
+		if (this.config.location.active) {
 			const { location } = this._getCallerInfo(3)
-			console.log(`%c${location}`, this._config.location.style)
+			console.log(`${indent}%c↑ ${location}`, this.config.location.style)
 		}
 	},
 
 	// Error
 	error(...args) {
-		if (!this._config.active) return
-		console.error(...args)
-		if (this._config.location.active) {
-			const { location } = this._getCallerInfo(3)
-			console.log(`%c${location}`, this._config.location.style)
-		}
+		if (!this._shouldLog()) return
+		const indent = this._getIndent()
+		console.error(indent, ...args)
 	},
 
 	// Warn
 	warn(...args) {
-		if (!this._config.active) return
-		console.warn(...args)
-		if (this._config.location.active) {
-			const { location } = this._getCallerInfo(3)
-			console.log(`%c${location}`, this._config.location.style)
-		}
+		if (!this._shouldLog()) return
+		const indent = this._getIndent()
+		console.warn(indent, ...args)
 	},
 
 	// Divider
 	divider(text = '') {
-		if (!this._config.active || !this._config.divider.active) return
+		if (!this._shouldLog() || !this.config.divider.active) return
 
-		const char = this._config.divider.char
-		const style = this._config.divider.style
+		const char = this.config.divider.char
+		const style = this.config.divider.style
+		const indent = this._getIndent()
 
 		if (text) {
-			console.log(`%c${text}\n${char.repeat(text.length)}`, style)
+			console.log(`${indent}%c${text}\n${indent}${char.repeat(text.length)}`, style)
 		} else {
-			console.log(`%c${char.repeat(this._config.divider.length)}`, style)
+			console.log(`${indent}%c${char.repeat(this.config.divider.length)}`, style)
 		}
-	},
-
-	// Start
-	start(text = 'Logs') {
-		if (!this._config.active || !this._config.group.active) return
-		const method = this._config.group.collapsed ? console.groupCollapsed : console.group
-		method(`%c${text}`, this._config.group.style)
-	},
-
-	// End
-	end() {
-		if (!this._config.active || !this._config.group.active) return
-		console.groupEnd()
 	},
 
 	// Init
 	init() {
-		Object.keys(this._styles).forEach((mode) => {
-			this[mode] = (...args) => this.styled(mode, ...args)
+		Object.keys(this.styles).forEach((color) => {
+			this[color] = (...args) => this._styled(color, ...args)
+			this.start[color] = (text = null) => this._startWithStyle(color, text)
+			this.enter[color] = (...data) => this._enterWithStyle(color, ...data)
 		})
+	},
+}
+
+// @g Storage
+//------------------------
+const Storage = {
+	// Get
+	get: (key, defaultValue = null) => {
+		try {
+			const item = localStorage.getItem(key)
+			return item ? JSON.parse(item) : defaultValue
+		} catch (e) {
+			Log.red('Storage read error:', e)
+			return defaultValue
+		}
+	},
+	// Set
+	set: (key, value) => {
+		try {
+			localStorage.setItem(key, JSON.stringify(value))
+			return true
+		} catch (e) {
+			Log.red('Storage write error:', e)
+			return false
+		}
 	},
 }
 
@@ -387,6 +468,7 @@ const Modal = {
 	// @b Initialize
 	//------------------------
 	init: () => {
+		Log.enter('Modal')
 		// Modal background click
 		DOM.on(Modal.$.element, 'click', (e) => {
 			if (e.target === Modal.$.element) Modal.close()
@@ -395,15 +477,20 @@ const Modal = {
 		DOM.on(Modal.$.close, 'click', Modal.close)
 		// Modal ESC key
 		DOM.on(document, 'keydown', (e) => {
+			Log.orange(e.key)
 			if (e.key === 'Escape' && Modal.isOpen()) Modal.close()
+			
 		})
+		Log.exit()
 	},
 
 	// @b Open modal
 	//------------------------
 	open: (content) => {
+		Log.enter("Modal opened")
 		if (!Modal.$.element) {
 			Log.red('Modal not initialized')
+			Log.exit()
 			return
 		}
 
@@ -417,16 +504,17 @@ const Modal = {
 
 		DOM.addClass(Modal.$.element, 'modal--active')
 		DOM.lockScroll()
-		Log.gray('Modal opened')
+		Log.exit()
 	},
 
 	// @b Close modal
 	//------------------------
 	close: () => {
+		Log.enter("Modal closed")
 		if (!Modal.$.element) return
 		DOM.removeClass(Modal.$.element, 'modal--active')
 		DOM.unlockScroll()
-		Log.gray('Modal closed')
+		Log.exit()
 	},
 
 	// @b Check if modal is open
@@ -527,7 +615,7 @@ const $ = {
 //========================
 const Pure = {
 	getRandomGray: () => {
-		const intensity = Math.floor(Math.random() * 255)
+		const intensity = Math.floor(Math.random() * 30)
 		const hex = intensity.toString(16).padStart(2, '0')
 		return `#${hex}${hex}${hex}`
 	},
@@ -540,6 +628,7 @@ const Effects = {
 	// @b Update favicon
 	//------------------------
 	updateFavicon: () => {
+		Log.enter()
 		const canvas = DOM.create({
 			type: 'canvas',
 			height: 32,
@@ -551,6 +640,7 @@ const Effects = {
 		ctx.fillRect(0, 0, 32, 32)
 
 		DOM.setFavicon(canvas)
+		Log.exit()
 	},
 
 	// @b Update main color
@@ -558,9 +648,10 @@ const Effects = {
 	updateMainColor: (newColor) => {
 		if (!newColor) return
 		STATE.mainColor = newColor
-		Log.white(newColor)
+		Log.enter(newColor)
 		DOM.setStyle($.main.element, 'backgroundColor', newColor)
 		Storage.set(CONFIG.storage.mainColor, newColor)
+		Log.exit()
 	},
 }
 //#endregion
@@ -583,13 +674,16 @@ const Handlers = {
 	// @b Change color click
 	//------------------------
 	changeColorClick: () => {
-		Log.blue()
+		Log.start()
+		Log.enter()
 		Modal.confirm('Change color?', 'Do you want to change the background color?', () => {
 			Logic.changeColor()
 			setTimeout(() => {
 				Modal.alert('Success!', 'The color has been changed.')
 			}, 500)
 		})
+		Log.exit()
+		Log.end()
 	},
 }
 //#endregion
@@ -599,7 +693,9 @@ const Handlers = {
 const Listeners = {
 	init: () => {
 		// Main button
+		Log.enter('Listeners')
 		DOM.on($.main.button, 'click', Handlers.changeColorClick)
+		Log.exit()
 	},
 }
 //#endregion
@@ -609,11 +705,14 @@ const Listeners = {
 const App = {
 	init: () => {
 		Log.init()
-		Log.yellow('App started...')
+		Log.start('App init')
+		Log.enter('App')
 		Modal.init()
 		Listeners.init()
 		Effects.updateMainColor(STATE.mainColor)
 		Effects.updateFavicon()
+		Log.exit()
+		Log.end()
 	},
 }
 
