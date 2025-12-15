@@ -615,7 +615,7 @@ const $ = {
 //========================
 const Pure = {
 	getRandomGray: () => {
-		const intensity = Math.floor(Math.random() * 30)
+		const intensity = Math.floor(Math.random() * 128)
 		const hex = intensity.toString(16).padStart(2, '0')
 		return `#${hex}${hex}${hex}`
 	},
