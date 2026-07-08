@@ -59,7 +59,7 @@ const Log = {
 	_formatArgs: (args) =>
 		args
 			.map((a) =>
-				a instanceof HTMLElement ? `[${a.tagName}]` : typeof a === 'object' ? JSON.stringify(a, null, 2) : a
+				a instanceof HTMLElement ? `[${a.tagName}]` : typeof a === 'object' ? JSON.stringify(a, null, 2) : a,
 			)
 			.join(', '),
 
@@ -267,7 +267,15 @@ const DOM = {
 	setStyle: (element, property, value) => {
 		if (!element) return
 		if (typeof property === 'object') {
-			Object.entries(property).forEach(([key, val]) => (element.style[key] = val))
+			Object.entries(property).forEach(([key, val]) => {
+				if (key.startsWith('--')) {
+					element.style.setProperty(key, val)
+				} else {
+					element.style[key] = val
+				}
+			})
+		} else if (property.startsWith('--')) {
+			element.style.setProperty(property, value)
 		} else {
 			element.style[property] = value
 		}
@@ -425,7 +433,7 @@ const Tools = {
 		hex.slice(1).replace(/../g, (c) =>
 			Math.round(parseInt(c, 16) + (255 - parseInt(c, 16)) * percent)
 				.toString(16)
-				.padStart(2, '0')
+				.padStart(2, '0'),
 		),
 
 	// @b Throttle
@@ -439,12 +447,15 @@ const Tools = {
 				lastRan = Date.now()
 			} else {
 				clearTimeout(lastFunc)
-				lastFunc = setTimeout(() => {
-					if (Date.now() - lastRan >= limit) {
-						func.apply(this, args)
-						lastRan = Date.now()
-					}
-				}, limit - (Date.now() - lastRan))
+				lastFunc = setTimeout(
+					() => {
+						if (Date.now() - lastRan >= limit) {
+							func.apply(this, args)
+							lastRan = Date.now()
+						}
+					},
+					limit - (Date.now() - lastRan),
+				)
 			}
 		}
 	},
@@ -479,7 +490,6 @@ const Modal = {
 		DOM.on(document, 'keydown', (e) => {
 			Log.orange(e.key)
 			if (e.key === 'Escape' && Modal.isOpen()) Modal.close()
-			
 		})
 		Log.exit()
 	},
@@ -487,7 +497,7 @@ const Modal = {
 	// @b Open modal
 	//------------------------
 	open: (content) => {
-		Log.enter("Modal opened")
+		Log.enter('Modal opened')
 		if (!Modal.$.element) {
 			Log.red('Modal not initialized')
 			Log.exit()
@@ -510,7 +520,7 @@ const Modal = {
 	// @b Close modal
 	//------------------------
 	close: () => {
-		Log.enter("Modal closed")
+		Log.enter('Modal closed')
 		if (!Modal.$.element) return
 		DOM.removeClass(Modal.$.element, 'modal--active')
 		DOM.unlockScroll()

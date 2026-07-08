@@ -5,12 +5,17 @@
 /* @b Variables
 /*------------------------*/
 :root {
+	/* colors */
 	--black: #000;
 	--gray1: #111;
 	--gray2: #222;
 	--gray3: #333;
 	--gray4: #444;
 	--white: #fff;
+	/* dimensions */
+	--header-height: 48px;
+	--footer-height: 36px;
+	/* effects */
 	--shadow: 0 0 15px 5px rgba(0, 0, 0, 0.5);
 	--transition: all 0.3s ease;
 }
@@ -87,7 +92,8 @@ header {
 	align-items: center;
 	font-size: 2rem;
 	font-weight: bold;
-	padding: 10px;
+	height: var(--header-height);
+	padding: 8px;
 }
 /*#endregion*/
 /*========================*/
@@ -126,7 +132,8 @@ footer {
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	padding: 10px;
+	height: var(--footer-height);
+	padding: 8px;
 }
 /*#endregion*/
 /*========================*/
