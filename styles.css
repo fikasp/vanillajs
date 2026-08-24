@@ -107,7 +107,7 @@ main {
 	background: var(--gray1);
 	padding: 10px;
 }
-/* @b Button */
+/* @b Button
 /*------------------------*/
 .main__button {
 	padding: 10px 15px;
@@ -163,7 +163,7 @@ footer {
 	opacity: 1;
 }
 
-/* @b Container */
+/* @b Container
 /*------------------------*/
 .modal__container {
 	position: relative;
@@ -185,7 +185,7 @@ footer {
 	opacity: 1;
 }
 
-/* @b Close button */
+/* @b Close button
 /*------------------------*/
 .modal__close {
 	position: absolute;
@@ -206,7 +206,7 @@ footer {
 	color: var(--gray4);
 }
 
-/* @b Content */
+/* @b Content
 /*------------------------*/
 .modal__content {
 	display: flex;
@@ -233,7 +233,7 @@ footer {
 	padding-bottom: 20px;
 }
 
-/* @b Buttons */
+/* @b Buttons
 /*------------------------*/
 .modal__buttons {
 	display: flex;
