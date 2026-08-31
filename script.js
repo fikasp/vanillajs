@@ -587,7 +587,7 @@ const Modal = {
 //========================
 const CONFIG = {
 	storage: {
-		mainColor: 'main-color',
+		settings: 'VJS_settings',
 	},
 	defaults: {
 		mainColor: '#111',
@@ -598,7 +598,7 @@ const CONFIG = {
 //#region @r STATE
 //========================
 const STATE = {
-	mainColor: Storage.get(CONFIG.storage.mainColor) || CONFIG.defaults.mainColor,
+	mainColor: CONFIG.defaults.mainColor,
 }
 
 //#endregion
@@ -621,9 +621,11 @@ const $ = {
 
 //#endregion
 //========================
-//#region @r PURE FUNCTIONS
+//#region @r PURE
 //========================
 const Pure = {
+	// @b Get random gray
+	//------------------------
 	getRandomGray: () => {
 		const intensity = Math.floor(Math.random() * 128)
 		const hex = intensity.toString(16).padStart(2, '0')
@@ -632,7 +634,7 @@ const Pure = {
 }
 //#endregion
 //========================
-//#region @r SIDE EFFECTS
+//#region @r EFFECTS
 //========================
 const Effects = {
 	// @b Update favicon
@@ -660,13 +662,21 @@ const Effects = {
 		STATE.mainColor = newColor
 		Log.enter(newColor)
 		DOM.setStyle($.main.element, 'backgroundColor', newColor)
-		Storage.set(CONFIG.storage.mainColor, newColor)
+		Effects.saveSettings()
 		Log.exit()
+	},
+
+	// @b Save all settings to storage
+	//------------------------
+	saveSettings: () => {
+		Storage.set(CONFIG.storage.settings, {
+			mainColor: STATE.mainColor,
+		})
 	},
 }
 //#endregion
 //========================
-//#region @r MAIN LOGIC
+//#region @r LOGIC
 //========================
 const Logic = {
 	// @b Change color
@@ -674,6 +684,12 @@ const Logic = {
 	changeColor: () => {
 		const newColor = Pure.getRandomGray()
 		Effects.updateMainColor(newColor)
+	},
+	// @b Load settings from storage
+	//------------------------
+	loadSettings: () => {
+		const settings = Storage.get(CONFIG.storage.settings, {})
+		STATE.mainColor = settings.mainColor ?? CONFIG.defaults.mainColor
 	},
 }
 //#endregion
@@ -710,13 +726,14 @@ const Listeners = {
 }
 //#endregion
 //========================
-//#region @r APP INIT
+//#region @r APP
 //========================
 const App = {
 	init: () => {
 		Log.init()
 		Log.start('App init')
 		Log.enter('App')
+		Logic.loadSettings()
 		Modal.init()
 		Listeners.init()
 		Effects.updateMainColor(STATE.mainColor)
